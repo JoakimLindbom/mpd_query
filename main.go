@@ -25,7 +25,7 @@ const host = "192.168.1.18"
 	w.Write([]byte(`{"artists": ["` + key + `"]}`))
 }
 */
-func getArtists(w http.ResponseWriter, r *http.Request) {
+func getArtistis(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"artists": ["Art of Noise", "ARC", "TOOL", "A Perfect Circle"]}`))
@@ -36,6 +36,91 @@ func getArtist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"artist": "Art of Noise", "no of records": 7, "no of songs": 35}`))
 }
+
+func getAllInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	// Connect to MPD server
+	conn, err := mpd.Dial("tcp", host+":6600")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer conn.Close()
+
+	// Loop printing the current status of MPD.
+	status, err := conn.Status()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(status)
+	attr, err := conn.Search("artist", "ARC")
+
+	resp :=`{"artist":`
+	if (len(attr) > 1) {
+		resp += `[`
+	}
+
+	for _, s := range attr {
+		if val, ok := s["Artist"]; ok {
+			resp += `"` + val + `",`
+		}
+	}
+	resp = resp[:len(resp)-1] // Trim last comma
+
+	if (len(attr) > 1) {
+		resp += `]`
+	}
+
+	resp += `}`
+
+	w.Write([]byte(resp))
+}
+
+// Resolve query parameter from URL
+func getAllInfo2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	vars := mux.Vars(r)
+	artist := vars["artist"]
+
+	// Connect to MPD server
+	conn, err := mpd.Dial("tcp", host+":6600")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer conn.Close()
+
+	// Loop printing the current status of MPD.
+	status, err := conn.Status()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(status)
+	attr, err := conn.Search("artist", artist)
+
+	resp :=`{"artist":`
+	if (len(attr) > 1) {
+		resp += `[`
+	}
+
+	for _, s := range attr {
+		if val, ok := s["Artist"]; ok {
+			resp += `"` + val + `",`
+		}
+	}
+	resp = resp[:len(resp)-1] // Trim last comma
+
+	if (len(attr) > 1) {
+		resp += `]`
+	}
+
+	resp += `}`
+
+	w.Write([]byte(resp))
+}
+
 
 func get(w http.ResponseWriter, r *http.Request) {
 
@@ -107,8 +192,12 @@ func main() {
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
 	//api.HandleFunc("/", queryArtist).Queries("artist", "{artist}").Methods(http.MethodGet)
-	api.HandleFunc("/artists/", getArtists).Methods(http.MethodGet)
+	//api.HandleFunc("/artists/", getArtists).Methods(http.MethodGet)
+
+	api.HandleFunc("/", getAllInfo2).Queries("artist", "{artist}")
+
 	api.HandleFunc("/artists/{artist}", getArtist).Methods(http.MethodGet)
+	api.HandleFunc("/allinfo/", getAllInfo).Methods(http.MethodGet)
 	api.HandleFunc("/", get).Methods(http.MethodGet)
 	api.HandleFunc("/", post).Methods(http.MethodPost)
 	api.HandleFunc("/", notFound)
