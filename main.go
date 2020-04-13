@@ -10,8 +10,21 @@ import (
 
 const host = "192.168.1.18"
 
-//type server struct{}
+/*func queryArtist(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	key := r.FormValue("artist")
 
+	u, err := router.Get("YourHandler").URL("id", id, "artist", key)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"artists": ["` + key + `"]}`))
+}
+*/
 func getArtists(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -79,14 +92,25 @@ func dial() string {
 
 	return rtn
 }
+func banner() {
+	fmt.Println("+--------------------------------------------+")
+	fmt.Println("|                                            |")
+	fmt.Println("| Starting mpd_query REST server             |")
+	fmt.Println("|                                            |")
+	fmt.Println("| Connecting to: " + host + "                |")
+	fmt.Println("|                                            |")
+	fmt.Println("+--------------------------------------------+")
+}
 
 func main() {
-	r := mux.NewRouter()
-	api := r.PathPrefix("/api/v1").Subrouter()
+	banner()
+	router := mux.NewRouter()
+	api := router.PathPrefix("/api/v1").Subrouter()
+	//api.HandleFunc("/", queryArtist).Queries("artist", "{artist}").Methods(http.MethodGet)
 	api.HandleFunc("/artists/", getArtists).Methods(http.MethodGet)
 	api.HandleFunc("/artists/{artist}", getArtist).Methods(http.MethodGet)
 	api.HandleFunc("/", get).Methods(http.MethodGet)
 	api.HandleFunc("/", post).Methods(http.MethodPost)
 	api.HandleFunc("/", notFound)
-	log.Fatal(http.ListenAndServe(":5555", r))
+	log.Fatal(http.ListenAndServe(":5555", router))
 }
